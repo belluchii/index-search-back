@@ -9,11 +9,14 @@ fastify.get("/", async () => ({
   message: "Welcome to the Amazon Index Search API",
 }));
 
-fastify.listen({ port: process.env.PORT || 3000 }, (err, address) => {
-  if (err) {
-    fastify.log.error(err);
-    process.exit(1);
-  }
-  console.log(`server listening on ${address}`);
-  db();
-});
+fastify.listen(
+  { port: process.env.PORT || 3000, host: "0.0.0.0" },
+  (err, address) => {
+    if (err) {
+      fastify.log.error(err);
+      process.exit(1);
+    }
+    console.log(`server listening on ${address}`);
+    db();
+  },
+);
