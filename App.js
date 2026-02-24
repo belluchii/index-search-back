@@ -9,7 +9,7 @@ fastify.get("/", async () => ({
   message: "Welcome to the Amazon Index Search API",
 }));
 
-fastify.listen({ port: 3001 }, (err, address) => {
+fastify.listen({ port: process.env.PORT || 3000 }, (err, address) => {
   if (err) {
     fastify.log.error(err);
     process.exit(1);
