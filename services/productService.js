@@ -8,9 +8,9 @@ exports.getProducts = async () => {
   }
 };
 
-exports.getAllProducts = async (p) => {
+exports.getAllProducts = async (p, l) => {
   try {
-    const limit = 10;
+    const limit = parseInt(l) || 10;
     const page = Math.max(1, parseInt(p) || 1);
     const skip = (page - 1) * limit;
 
@@ -31,9 +31,9 @@ exports.getAllProducts = async (p) => {
   }
 };
 
-exports.searchProducts = async (q, p) => {
+exports.searchProducts = async (q, p, l) => {
   try {
-    const limit = 10;
+    const limit = parseInt(l) || 10;
     const page = Math.max(1, parseInt(p) || 1);
     const skip = (page - 1) * limit;
 
@@ -71,9 +71,9 @@ exports.searchProductsByID = async (id) => {
   }
 };
 
-exports.searchProductsByCategory = async (c, p) => {
+exports.searchProductsByCategory = async (c, p, l) => {
   try {
-    const limit = 10;
+    const limit = parseInt(l) || 10;
     const page = Math.max(1, parseInt(p) || 1);
     const skip = (page - 1) * limit;
 
@@ -95,9 +95,9 @@ exports.searchProductsByCategory = async (c, p) => {
   }
 };
 
-exports.getBestSellers = async (p) => {
+exports.getBestSellers = async (p, l) => {
   try {
-    const limit = 10;
+    const limit = parseInt(l) || 10;
     const page = Math.max(1, parseInt(p) || 1);
     const skip = (page - 1) * limit;
 
