@@ -44,8 +44,13 @@ const productsSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    score: {
+      type: Number,
+      required: false,
+      index: true,
+    },
   },
-  { versionKey: false }
+  { versionKey: false },
 );
 
 const Products = mongoose.model("Producto", productsSchema, "products");

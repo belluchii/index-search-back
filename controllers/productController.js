@@ -12,8 +12,24 @@ exports.getProducts = async (request, reply) => {
 
 exports.getAllProducts = async (request, reply) => {
   try {
-    const { page, limit } = request.query;
-    const products = await productService.getAllProducts(page, limit);
+    const {
+      page,
+      limit,
+      isBestSeller,
+      category,
+      minPrice,
+      maxPrice,
+      minStars,
+    } = request.query;
+    const products = await productService.getAllProducts(
+      page,
+      limit,
+      isBestSeller,
+      category,
+      minPrice,
+      maxPrice,
+      minStars,
+    );
     reply.send(products);
   } catch (error) {
     reply.status(500).send({ message: error.message });
@@ -22,10 +38,28 @@ exports.getAllProducts = async (request, reply) => {
 
 exports.searchProducts = async (request, reply) => {
   try {
-    const { query, page, limit } = request.query;
+    const {
+      query,
+      page,
+      limit,
+      isBestSeller,
+      category,
+      minPrice,
+      maxPrice,
+      minStars,
+    } = request.query;
     if (!query || query.length < 3)
       return reply.status(400).send({ error: `Query too short ${query}` });
-    const products = await productService.searchProducts(query, page, limit);
+    const products = await productService.searchProducts(
+      query,
+      page,
+      limit,
+      isBestSeller,
+      category,
+      minPrice,
+      maxPrice,
+      minStars,
+    );
     if (!products || products.length === 0) {
       return reply.send({
         products: [],
@@ -50,33 +84,6 @@ exports.searchProductByID = async (request, reply) => {
       return reply.status(404).send({ error: "Product not found" });
     }
     reply.send(product);
-  } catch (error) {
-    reply.status(500).send({ message: error.message });
-  }
-};
-
-exports.searchProductByCategory = async (request, reply) => {
-  try {
-    const { category_name, page, limit } = request.query;
-    if (!category_name) {
-      return reply.status(400).send({ error: "Category name is required" });
-    }
-    const products = await productService.searchProductsByCategory(
-      category_name,
-      page,
-      limit,
-    );
-    reply.send(products);
-  } catch (error) {
-    reply.status(500).send({ message: error.message });
-  }
-};
-
-exports.getBestSellers = async (request, reply) => {
-  try {
-    const { page, limit } = request.query;
-    const products = await productService.getBestSellers(page, limit);
-    reply.send(products);
   } catch (error) {
     reply.status(500).send({ message: error.message });
   }

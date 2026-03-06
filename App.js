@@ -3,6 +3,7 @@ const cors = require("@fastify/cors");
 
 fastify.register(require("./routes/health"));
 fastify.register(require("./routes/products"));
+fastify.register(require("./routes/utils"));
 const db = require("./db");
 require("dotenv").config();
 
