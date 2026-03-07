@@ -15,63 +15,80 @@ exports.getProducts = async () => {
   }
 };
 
-exports.getAllProducts = async (p, l, iBS, c, minP, maxP, minS) => {
+exports.getAllProducts = async (p, l, iBS, c, minP, maxP, minS, s) => {
   try {
     const limit = parseInt(l) || 10;
     const page = Math.max(1, parseInt(p) || 1);
     const skip = (page - 1) * limit;
+    const sortStage =
+      s === "price_asc"
+        ? { price: 1 }
+        : s === "price_desc"
+          ? { price: -1 }
+          : { score: -1 };
 
-    const products = await product.aggregate([
+    const matchStage = {
+      ...(c && { category_name: c }),
+      ...(iBS && { isBestSeller: iBS === "true" }),
+      ...((minP || maxP) && {
+        price: {
+          ...(minP && { $gte: parseFloat(minP) }),
+          ...(maxP && { $lte: parseFloat(maxP) }),
+        },
+      }),
+      ...(minS && { stars: { $gte: parseFloat(minS) } }),
+    };
+
+    const [result] = await product.aggregate([
       {
-        $match: {
-          ...(c && { category_name: c }),
-          ...(iBS && { isBestSeller: iBS === "true" }),
-          ...((minP || maxP) && {
-            price: {
-              ...(minP && { $gte: parseFloat(minP) }),
-              ...(maxP && { $lte: parseFloat(maxP) }),
-            },
-          }),
-          ...(minS && { stars: { $gte: parseFloat(minS) } }),
+        $facet: {
+          products: [
+            { $match: matchStage },
+            { $sort: sortStage },
+            { $skip: skip },
+            { $limit: limit },
+          ],
+          total: [{ $match: matchStage }, { $count: "count" }],
         },
       },
-      { $sort: { score: -1 } },
-      { $skip: skip },
-      { $limit: limit + 1 },
     ]);
 
-    const hasNextPage = products.length > limit;
-
     return {
-      products: products.slice(0, limit),
-      hasNextPage,
+      products: result.products,
+      totalPages: Math.ceil((result.total[0]?.count || 0) / limit),
     };
   } catch (error) {
     throw new Error("Failed getting all products: " + error.message);
   }
 };
 
-exports.searchProducts = async (q, p, l, iBS, c, minP, maxP, minS) => {
+exports.searchProducts = async (q, p, l, iBS, c, minP, maxP, minS, s) => {
   try {
     const limit = parseInt(l) || 10;
     const page = Math.max(1, parseInt(p) || 1);
     const skip = (page - 1) * limit;
+    const sortStage =
+      s === "price_asc"
+        ? { price: 1 }
+        : s === "price_desc"
+          ? { price: -1 }
+          : { score: -1 };
 
-    const products = await product.aggregate([
-      {
-        $match: {
-          $text: { $search: q },
-          ...(c && { category_name: c }),
-          ...(iBS && { isBestSeller: iBS === "true" }),
-          ...((minP || maxP) && {
-            price: {
-              ...(minP && { $gte: parseFloat(minP) }),
-              ...(maxP && { $lte: parseFloat(maxP) }),
-            },
-          }),
-          ...(minS && { stars: { $gte: parseFloat(minS) } }),
+    const matchStage = {
+      $text: { $search: q },
+      ...(c && { category_name: c }),
+      ...(iBS && { isBestSeller: iBS === "true" }),
+      ...((minP || maxP) && {
+        price: {
+          ...(minP && { $gte: parseFloat(minP) }),
+          ...(maxP && { $lte: parseFloat(maxP) }),
         },
-      },
+      }),
+      ...(minS && { stars: { $gte: parseFloat(minS) } }),
+    };
+
+    const [result] = await product.aggregate([
+      { $match: matchStage },
       { $addFields: { textScore: { $meta: "textScore" } } },
       {
         $addFields: {
@@ -80,16 +97,17 @@ exports.searchProducts = async (q, p, l, iBS, c, minP, maxP, minS) => {
           },
         },
       },
-      { $sort: { score: -1 } },
-      { $skip: skip },
-      { $limit: limit + 1 },
+      {
+        $facet: {
+          products: [{ $sort: sortStage }, { $skip: skip }, { $limit: limit }],
+          total: [{ $count: "count" }],
+        },
+      },
     ]);
 
-    const hasNextPage = products.length > limit;
-
     return {
-      products: products.slice(0, limit),
-      hasNextPage,
+      products: result.products,
+      totalPages: Math.ceil((result.total[0]?.count || 0) / limit),
     };
   } catch (error) {
     throw new Error("Failed searching products: " + error.message);

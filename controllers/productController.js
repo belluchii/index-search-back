@@ -20,6 +20,7 @@ exports.getAllProducts = async (request, reply) => {
       minPrice,
       maxPrice,
       minStars,
+      sort,
     } = request.query;
     const products = await productService.getAllProducts(
       page,
@@ -29,6 +30,7 @@ exports.getAllProducts = async (request, reply) => {
       minPrice,
       maxPrice,
       minStars,
+      sort,
     );
     reply.send(products);
   } catch (error) {
@@ -47,6 +49,7 @@ exports.searchProducts = async (request, reply) => {
       minPrice,
       maxPrice,
       minStars,
+      sort,
     } = request.query;
     if (!query || query.length < 3)
       return reply.status(400).send({ error: `Query too short ${query}` });
@@ -59,6 +62,7 @@ exports.searchProducts = async (request, reply) => {
       minPrice,
       maxPrice,
       minStars,
+      sort,
     );
     if (!products || products.length === 0) {
       return reply.send({
