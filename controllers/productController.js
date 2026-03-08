@@ -13,7 +13,7 @@ exports.getProducts = async (request, reply) => {
 exports.getAllProducts = async (request, reply) => {
   try {
     const {
-      page,
+      after,
       limit,
       isBestSeller,
       category,
@@ -23,7 +23,7 @@ exports.getAllProducts = async (request, reply) => {
       sort,
     } = request.query;
     const products = await productService.getAllProducts(
-      page,
+      after,
       limit,
       isBestSeller,
       category,
@@ -42,7 +42,7 @@ exports.searchProducts = async (request, reply) => {
   try {
     const {
       query,
-      page,
+      after,
       limit,
       isBestSeller,
       category,
@@ -55,7 +55,7 @@ exports.searchProducts = async (request, reply) => {
       return reply.status(400).send({ error: `Query too short ${query}` });
     const products = await productService.searchProducts(
       query,
-      page,
+      after,
       limit,
       isBestSeller,
       category,

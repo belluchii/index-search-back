@@ -15,19 +15,45 @@ exports.getProducts = async () => {
   }
 };
 
-exports.getAllProducts = async (p, l, iBS, c, minP, maxP, minS, s) => {
+exports.getAllProducts = async (
+  after,
+  limit = 10,
+  iBS,
+  c,
+  minP,
+  maxP,
+  minS,
+  s,
+) => {
   try {
-    const limit = parseInt(l) || 10;
-    const page = Math.max(1, parseInt(p) || 1);
-    const skip = (page - 1) * limit;
-    const sortStage =
-      s === "price_asc"
-        ? { price: 1 }
-        : s === "price_desc"
-          ? { price: -1 }
-          : { score: -1 };
+    const numLimit = parseInt(limit) || 10;
+    const {
+      Types: { ObjectId },
+    } = require("mongoose");
+
+    const sortField =
+      s === "price_asc" ? "price" : s === "price_desc" ? "price" : "score";
+    const sortDir = s === "price_asc" ? 1 : -1;
+    const sortObject = { [sortField]: sortDir, _id: sortDir };
+
+    let cursorMatch = {};
+    if (after) {
+      const { sortValue, id } = JSON.parse(
+        Buffer.from(after, "base64").toString(),
+      );
+      cursorMatch = {
+        $or: [
+          {
+            [sortField]:
+              sortDir === 1 ? { $gt: sortValue } : { $lt: sortValue },
+          },
+          { [sortField]: sortValue, _id: { $gt: new ObjectId(id) } },
+        ],
+      };
+    }
 
     const matchStage = {
+      ...cursorMatch,
       ...(c && { category_name: c }),
       ...(iBS && { isBestSeller: iBS === "true" }),
       ...((minP || maxP) && {
@@ -41,41 +67,54 @@ exports.getAllProducts = async (p, l, iBS, c, minP, maxP, minS, s) => {
 
     const [result] = await product.aggregate(
       [
+        { $match: matchStage },
+        { $sort: sortObject },
+        { $limit: numLimit + 1 },
         {
           $facet: {
-            products: [
-              { $match: matchStage },
-              { $sort: sortStage },
-              { $skip: skip },
-              { $limit: limit },
-            ],
-            total: [{ $match: matchStage }, { $count: "count" }],
+            products: [{ $limit: numLimit }],
+            next: [{ $skip: numLimit }, { $limit: 1 }],
           },
         },
       ],
-      { allowDiskUse: true },
+      { allowDiskUse: true, maxTimeMS: 15000 },
     );
 
-    return {
-      products: result.products,
-      totalPages: Math.ceil((result.total[0]?.count || 0) / limit),
-    };
+    const products = result.products || [];
+    const hasNext = result.next?.length > 0;
+    const lastDoc = products[products.length - 1];
+    const nextCursor =
+      hasNext && lastDoc
+        ? Buffer.from(
+            JSON.stringify({ sortValue: lastDoc[sortField], id: lastDoc._id }),
+          ).toString("base64")
+        : null;
+
+    return { products, nextCursor, hasNext };
   } catch (error) {
     throw new Error("Failed getting all products: " + error.message);
   }
 };
 
-exports.searchProducts = async (q, p, l, iBS, c, minP, maxP, minS, s) => {
+exports.searchProducts = async (q, after, l, iBS, c, minP, maxP, minS, s) => {
   try {
     const limit = parseInt(l) || 10;
-    const page = Math.max(1, parseInt(p) || 1);
-    const skip = (page - 1) * limit;
-    const sortStage =
-      s === "price_asc"
-        ? { price: 1 }
-        : s === "price_desc"
-          ? { price: -1 }
-          : { score: -1 };
+    const { Types: { ObjectId } } = require("mongoose");
+
+    const sortField = s === "price_asc" ? "price" : s === "price_desc" ? "price" : "metaScore";
+    const sortDir = s === "price_asc" ? 1 : s === "price_desc" ? -1 : -1;
+    const sortObject = { [sortField]: sortDir, _id: sortDir };
+
+    let cursorMatch = {};
+    if (after) {
+      const { sortValue, id } = JSON.parse(Buffer.from(after, "base64").toString());
+      cursorMatch = {
+        $or: [
+          { [sortField]: sortDir === 1 ? { $gt: sortValue } : { $lt: sortValue } },
+          { [sortField]: sortValue, _id: { $gt: new ObjectId(id) } },
+        ],
+      };
+    }
 
     const matchStage = {
       $text: { $search: q },
@@ -101,24 +140,28 @@ exports.searchProducts = async (q, p, l, iBS, c, minP, maxP, minS, s) => {
             },
           },
         },
+        { $match: cursorMatch },
+        { $sort: sortObject },
+        { $limit: limit + 1 },
         {
           $facet: {
-            products: [
-              { $sort: sortStage },
-              { $skip: skip },
-              { $limit: limit },
-            ],
-            total: [{ $count: "count" }],
+            products: [{ $limit: limit }],
+            next: [{ $skip: limit }, { $limit: 1 }],
           },
         },
       ],
       { allowDiskUse: true },
     );
 
-    return {
-      products: result.products,
-      totalPages: Math.ceil((result.total[0]?.count || 0) / limit),
-    };
+    const products = result.products || [];
+    const hasNext = result.next?.length > 0;
+    const lastDoc = products[products.length - 1];
+    const nextCursor =
+      hasNext && lastDoc
+        ? Buffer.from(JSON.stringify({ sortValue: lastDoc[sortField], id: lastDoc._id })).toString("base64")
+        : null;
+
+    return { products, nextCursor, hasNext };
   } catch (error) {
     throw new Error("Failed searching products: " + error.message);
   }
