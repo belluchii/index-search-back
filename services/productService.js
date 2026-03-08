@@ -39,19 +39,22 @@ exports.getAllProducts = async (p, l, iBS, c, minP, maxP, minS, s) => {
       ...(minS && { stars: { $gte: parseFloat(minS) } }),
     };
 
-    const [result] = await product.aggregate([
-      {
-        $facet: {
-          products: [
-            { $match: matchStage },
-            { $sort: sortStage },
-            { $skip: skip },
-            { $limit: limit },
-          ],
-          total: [{ $match: matchStage }, { $count: "count" }],
+    const [result] = await product.aggregate(
+      [
+        {
+          $facet: {
+            products: [
+              { $match: matchStage },
+              { $sort: sortStage },
+              { $skip: skip },
+              { $limit: limit },
+            ],
+            total: [{ $match: matchStage }, { $count: "count" }],
+          },
         },
-      },
-    ]);
+      ],
+      { allowDiskUse: true },
+    );
 
     return {
       products: result.products,
@@ -87,23 +90,30 @@ exports.searchProducts = async (q, p, l, iBS, c, minP, maxP, minS, s) => {
       ...(minS && { stars: { $gte: parseFloat(minS) } }),
     };
 
-    const [result] = await product.aggregate([
-      { $match: matchStage },
-      { $addFields: { textScore: { $meta: "textScore" } } },
-      {
-        $addFields: {
-          metaScore: {
-            $multiply: ["$textScore", { $abs: { $subtract: [1, "$score"] } }],
+    const [result] = await product.aggregate(
+      [
+        { $match: matchStage },
+        { $addFields: { textScore: { $meta: "textScore" } } },
+        {
+          $addFields: {
+            metaScore: {
+              $multiply: ["$textScore", { $abs: { $subtract: [1, "$score"] } }],
+            },
           },
         },
-      },
-      {
-        $facet: {
-          products: [{ $sort: sortStage }, { $skip: skip }, { $limit: limit }],
-          total: [{ $count: "count" }],
+        {
+          $facet: {
+            products: [
+              { $sort: sortStage },
+              { $skip: skip },
+              { $limit: limit },
+            ],
+            total: [{ $count: "count" }],
+          },
         },
-      },
-    ]);
+      ],
+      { allowDiskUse: true },
+    );
 
     return {
       products: result.products,
