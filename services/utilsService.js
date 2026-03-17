@@ -24,3 +24,7 @@ exports.getMaxMinPrice = async () => {
     throw new Error("Failed getting max and min prices:", error.message);
   }
 };
+
+exports.getStatus = async () => {
+  return { status: "ok", message: "API running" };
+};

@@ -17,3 +17,12 @@ exports.getMaxMinPrice = async (request, reply) => {
     reply.status(500).send({ message: error.message });
   }
 };
+
+exports.getStatus = async (request, reply) => {
+  try {
+    const status = await utilsService.getStatus();
+    reply.send(status);
+  } catch (error) {
+    reply.status(500).send({ message: error.message });
+  }
+};
