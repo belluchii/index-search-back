@@ -1,31 +1,32 @@
+require("dotenv").config();
 const fastify = require("fastify")({ logger: true });
-const cors = require("@fastify/cors");
+const connectDB = require("./db/index");
+
+fastify.register(require("@fastify/cors"), {
+  origin: "*",
+});
 
 fastify.register(require("./routes/health"));
 fastify.register(require("./routes/products"));
 fastify.register(require("./routes/utils"));
-const db = require("./db");
-require("dotenv").config();
 
-(async () => {
-  await fastify.register(cors, {
-    origin: [process.env.FRONTEND_URL],
-    methods: ["GET"],
-  });
+let isConnected = false;
 
-  fastify.get("/", async () => ({
-    message: "Welcome to the Amazon Index Search API",
-  }));
+async function getApp() {
+  if (!isConnected) {
+    await connectDB();
+    isConnected = true;
+  }
+  await fastify.ready();
+  return fastify;
+}
 
-  fastify.listen(
-    { port: process.env.PORT || 3000, host: "0.0.0.0" },
-    (err, address) => {
-      if (err) {
-        fastify.log.error(err);
-        process.exit(1);
-      }
-      console.log(`server listening on ${address}`);
-      db();
-    },
-  );
-})();
+if (require.main === module) {
+  const start = async () => {
+    await connectDB();
+    await fastify.listen({ port: process.env.PORT || 3000, host: "0.0.0.0" });
+  };
+  start();
+}
+
+module.exports = { getApp, fastify };
